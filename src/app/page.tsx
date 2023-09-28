@@ -1,6 +1,6 @@
 'use client';
 import { Dispatch, useEffect, useReducer } from 'react';
-import { CompositeNode, CheckedIdsRollup } from '@/components/Hierarchy/Hierarchy';
+import { CompositeNode } from '@/components/Hierarchy/Hierarchy';
 import { naicsHierarchy, NaicsHierarchyItem } from '@/components/Hierarchy/naics';
 
 const hierarchyReducer = (
@@ -40,7 +40,7 @@ const initializeState = (
         // We already added the child in previous iterations, so skip
         return acc;
       }
-      return curr.addChild({ item: industry, checkedIds: {} });
+      return curr.addChild({ item: industry, subtreeState: { selected: [], notSelected: [], undetermined: [] } });
     }, null);
     if (!didAddChild) {
       const newRoot = new CompositeNode({
@@ -48,7 +48,7 @@ const initializeState = (
         name: industry.name,
         parent: null,
         onChange: (args) => onChange({ type: 'update-root-nodes', newRoots: [args.root] }),
-        checkedIds: {},
+        subtreeState: { selected: [], notSelected: [], undetermined: [] },
       });
       hierarchies.push(newRoot);
     }
@@ -71,9 +71,12 @@ export default function Home() {
       <div className="z-10 w-full max-w-5xl items-start justify-between font-mono text-sm lg:flex"></div>
       {state
         ? state.map((node) => (
-            <div className="p-4" key={node.getId()}>
-              {node.render()}
-            </div>
+            <>
+              <div>Rollup: {node.recalculateSubtreeSelection({}).subtreeState.selected.join(', ')} </div>
+              <div className="p-4" key={node.getId()}>
+                {node.render()}
+              </div>
+            </>
           ))
         : ''}
     </main>
