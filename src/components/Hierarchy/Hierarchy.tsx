@@ -18,42 +18,42 @@ export class CompositeNode {
         - Tell parent to recalculate status (recursive)
     */
   #name: string;
-  #id: string;
+  id: string;
   #onChange: (args: ReturnType<typeof this.setSelectionValueForSelfAndChildren>) => void;
   #parent: CompositeNode | null;
-  #children: CompositeNode[];
-  #isSelected: SelectionValue;
+  children: CompositeNode[];
+  isSelected: SelectionValue;
 
   constructor(props: {
     id: string;
     name: string;
     parent: CompositeNode | null;
-    onChange: (args: { node: CompositeNode; checkedIds: CheckedIdsRollup }) => void;
+    onChange: (args: { root: CompositeNode; checkedIds: CheckedIdsRollup }) => void;
     checkedIds: CheckedIdsRollup;
   }) {
     // super(props);
     this.#name = props.name;
-    this.#id = props.id;
+    this.id = props.id;
     this.#parent = props.parent;
-    this.#isSelected = props.checkedIds[props.id] ? 1 : -1; // This doesn't seem right
+    this.isSelected = props.checkedIds[props.id] ? 1 : -1; // This doesn't seem right
     this.#onChange = props.onChange;
-    this.#children = [];
+    this.children = [];
   }
 
   getId() {
-    return this.#id;
+    return this.id;
   }
   getName() {
     return this.#name;
   }
   getChildren() {
-    return this.#children;
+    return this.children;
   }
   getIsSelected() {
-    return this.#isSelected;
+    return this.isSelected;
   }
   getIsSelectedAsBoolOrUndefined() {
-    switch (this.#isSelected) {
+    switch (this.isSelected) {
       case -1:
         return false;
       case 1:
@@ -70,7 +70,7 @@ export class CompositeNode {
   //    * This should give back all IDs for all children of the current CompositeNode, AND it's own ID.
   //    */
   //   getAllChildrenIds(): string[] {
-  //     return this.#children.reduce(
+  //     return this.children.reduce(
   //       (acc: string[], curr: CompositeNode) => {
   //         return [...acc, curr.getId(), ...curr.getAllChildrenIds()];
   //       },
@@ -84,11 +84,16 @@ export class CompositeNode {
   setSelectionValueForSelfAndChildren(
     newSelectedStatus: SelectionValue
   ): ReturnType<typeof this.recalculateSubtreeSelection> {
-    this.#isSelected = newSelectedStatus;
-    this.#children.forEach((child) => child.setSelectionValueForSelfAndChildren(newSelectedStatus));
-    return this.#parent
-      ? this.#parent.recalculateSubtreeSelection({})
-      : { node: this, checkedIds: this.#isSelected ? { [this.#id]: true } : {} };
+    this.isSelected = newSelectedStatus;
+    this.children.forEach((child) => child.setSelectionValueForSelfAndChildren(newSelectedStatus));
+    if (this.#parent) {
+      console.log(`${this.id} has a parent after setting state. Must recalculate...`);
+      return this.#parent.recalculateSubtreeSelection({});
+    }
+    const checkedIds = this.isSelected ? { [this.id]: true } : {};
+    console.log(`${this.id} has NO parent after setting state. checkedIds: ${checkedIds}`);
+
+    return { root: this, checkedIds };
   }
 
   getRollupState(childrenStates: ChildrenState): SelectionValue {
@@ -110,26 +115,33 @@ export class CompositeNode {
   }
 
   /**
+   * Retrieve a collated subtree state for all children of a given node
+   */
+  getSubtreeState(node: CompositeNode): ChildrenState {
+    return node
+      .getChildren()
+      .map((childNode) => childNode.getChildrenState({}))
+      .reduce(
+        (childrenState: ChildrenState, currChildState) => {
+          childrenState.selected = [...childrenState.selected, ...currChildState.selected];
+          childrenState.notSelected = [...childrenState.notSelected, ...currChildState.notSelected];
+          childrenState.undetermined = [...childrenState.undetermined, ...currChildState.undetermined];
+          return childrenState;
+        },
+        { notSelected: [], undetermined: [], selected: [] }
+      );
+  }
+
+  /**
    * Get an object with the current arrays for each possible state for each id (with rollup)
    *
    * @param isFullRefresh boolean used to determine if each child status should be believed, or if all descendents should be checked to determine child status
    */
   getChildrenState({ isFullRefresh }: { isFullRefresh?: boolean }): ChildrenState {
-    return this.#children.reduce(
+    return this.children.reduce(
       (acc: ChildrenState, curr: CompositeNode) => {
         if (isFullRefresh) {
-          const subtreeState = curr
-            .getChildren()
-            .map((childNode) => childNode.getChildrenState({}))
-            .reduce(
-              (childrenState: ChildrenState, currChildState) => {
-                childrenState.selected = [...childrenState.selected, ...currChildState.selected];
-                childrenState.notSelected = [...childrenState.notSelected, ...currChildState.notSelected];
-                childrenState.undetermined = [...childrenState.undetermined, ...currChildState.undetermined];
-                return childrenState;
-              },
-              { notSelected: [], undetermined: [], selected: [] }
-            );
+          const subtreeState = this.getSubtreeState(curr);
           acc.selected = [...acc.selected, ...subtreeState.selected];
           acc.notSelected = [...acc.notSelected, ...subtreeState.notSelected];
           acc.undetermined = [...acc.undetermined, ...subtreeState.undetermined];
@@ -146,6 +158,11 @@ export class CompositeNode {
         }
         if (curr.getIsSelected() === 0) {
           acc.undetermined.push(curr.getId());
+          // Undetermined means we need to keep going to not lose track of our selected and notSelected children
+          const subtreeState = this.getSubtreeState(curr);
+          acc.selected = [...acc.selected, ...subtreeState.selected];
+          acc.notSelected = [...acc.notSelected, ...subtreeState.notSelected];
+          acc.undetermined = [...acc.undetermined, ...subtreeState.undetermined];
         }
         return acc;
       },
@@ -154,33 +171,38 @@ export class CompositeNode {
   }
 
   /**
-   * Recalculate and set #isSelected based on the state of CompositeNode's children
+   * Recalculate and set isSelected based on the state of CompositeNode's children
    * then return the resultant CheckedIdsRollup for the subtree with
    * the current node as the root.
    *
    * @param isFullRefresh boolean used to determine if each child status should be believed, or if all descendents should be checked to determine child status
    */
   recalculateSubtreeSelection({ isFullRefresh }: { isFullRefresh?: boolean }): {
-    node: CompositeNode;
+    root: CompositeNode;
     checkedIds: CheckedIdsRollup;
   } {
     const childStates = this.getChildrenState({ isFullRefresh });
     console.log({ recalcState: childStates });
     const newSelectionValueWithRollup = this.getRollupState(childStates);
     console.log({
-      id: this.#id,
+      id: this.id,
       recalcNewSelectionValueWithRollup: newSelectionValueWithRollup,
     });
-    const oldSelectionStatus = this.#isSelected;
-    this.#isSelected = newSelectionValueWithRollup;
+    const oldSelectionStatus = this.isSelected;
+    this.isSelected = newSelectionValueWithRollup;
     if (this.#parent && oldSelectionStatus !== newSelectionValueWithRollup) {
+      console.log(
+        `${this.#parent.getId()} exists and old (${oldSelectionStatus}) !== new (${newSelectionValueWithRollup})`
+      );
       return this.#parent.recalculateSubtreeSelection({});
     }
+    console.log(`No more parents (or status is the same)`);
     const checkedIds = childStates.selected.reduce((acc: CheckedIdsRollup, curr) => {
       acc[curr] = true;
       return acc;
     }, {});
-    return { node: this, checkedIds };
+    console.log(`returning from recalc: ${this.getId()}, ${JSON.stringify(checkedIds)}`);
+    return { root: this.getRoot(), checkedIds };
   }
 
   //   /**
@@ -195,15 +217,15 @@ export class CompositeNode {
 
   //     switch (appropriateState) {
   //       case 0:
-  //         this.#isSelected = 0;
+  //         this.isSelected = 0;
   //         // this.#parent?.setIsSelected(0); // We know it must be undetermined
   //         break;
   //       case 1:
-  //         this.#isSelected = 1;
+  //         this.isSelected = 1;
   //         // this.#parent?.setIsSelected(); // We can't know the parent's state, tell it to recalculate
   //         break;
   //       case -1:
-  //         this.#isSelected = -1;
+  //         this.isSelected = -1;
   //         // this.#parent?.setIsSelected(); // We can't know the parent's state, tell it to recalculate
   //         break;
   //       default:
@@ -214,7 +236,7 @@ export class CompositeNode {
   //   }
 
   //   getSelectedChildren() {
-  //     this.#children.filter((child) => child.getIsSelected() === 1);
+  //     this.children.filter((child) => child.getIsSelected() === 1);
   //   }
 
   /**
@@ -246,7 +268,7 @@ export class CompositeNode {
           id: item!.id,
           name: item!.name,
           parent: null,
-          onChange: (id) => {},
+          onChange: this.#onChange,
           checkedIds,
         });
       const parent = newNode.addChild({ node: this, checkedIds });
@@ -255,7 +277,7 @@ export class CompositeNode {
       }
       return parent;
     }
-    const myChildThatIsAParent = this.#children.find((myChild) => myChild.isAncestorById(id));
+    const myChildThatIsAParent = this.children.find((myChild) => myChild.isAncestorById(id));
     if (myChildThatIsAParent) {
       return item
         ? myChildThatIsAParent.addChild({ item: item, checkedIds })
@@ -268,10 +290,10 @@ export class CompositeNode {
         id: item!.id,
         name: item!.name,
         parent: this,
-        onChange: (id) => {},
+        onChange: this.#onChange,
         checkedIds,
       });
-    this.#children.push(childNode);
+    this.children.push(childNode);
     return this;
   }
 
@@ -280,7 +302,7 @@ export class CompositeNode {
    * E.g. "151" should be a child of "15", and "216" should be a child of "21"
    *  */
   isAncestorById(id: string): boolean {
-    if (id.length > this.#id.length && id.startsWith(this.#id)) {
+    if (id.length > this.id.length && id.startsWith(this.id)) {
       return true;
     }
     return false;
@@ -290,7 +312,7 @@ export class CompositeNode {
    * E.g. "151" should be a child of "15", and "216" should be a child of "21"
    *  */
   isChildById(id: string): boolean {
-    if (id.length < this.#id.length && this.#id.startsWith(id)) {
+    if (id.length < this.id.length && this.id.startsWith(id)) {
       return true;
     }
     return false;
@@ -301,7 +323,7 @@ export class CompositeNode {
   //    * E.g. "151" should be a sibling of "152", and "2135" should be a sibling of "2138"
   //    *  */
   //   isSiblingById(id: string): boolean {
-  //     const thisParentId = this.#id.slice(0, this.#id.length - 1);
+  //     const thisParentId = this.id.slice(0, this.id.length - 1);
   //     const thatParentId = id.slice(0, id.length - 1);
   //     if (thisParentId === thatParentId) {
   //       return true;
@@ -310,25 +332,33 @@ export class CompositeNode {
   //   }
   render() {
     return (
-      <div key={this.#id}>
-        <label style={{ paddingLeft: `${this.#id.length}rem` }}>
+      <div key={this.id}>
+        <label style={{ paddingLeft: `${this.id.length}rem` }}>
           <input
             type="checkbox"
             onChange={() => {
               let newSelectedStatus: SelectionValue;
-              if (this.#isSelected === 0 || this.#isSelected === 1) {
+              if (this.isSelected === 0 || this.isSelected === 1) {
                 newSelectedStatus = -1;
               } else {
                 newSelectedStatus = 1;
               }
-              console.log({ onChange: newSelectedStatus, id: this.#id });
-              this.#onChange(this.setSelectionValueForSelfAndChildren(newSelectedStatus));
+              console.log({ onChange: newSelectedStatus, id: this.id });
+              const changeResults = this.setSelectionValueForSelfAndChildren(newSelectedStatus);
+              console.log('Calling #onChange with...');
+              console.log({ changeResults });
+              this.#onChange(changeResults);
             }}
             checked={this.getIsSelectedAsBoolOrUndefined()}
+            ref={(input) => {
+              if (input) {
+                input.indeterminate = this.getIsSelectedAsBoolOrUndefined() === undefined;
+              }
+            }}
           />
           <span className="peer-checked:bg-blue-300">
-            {this.#id}, {this.#name}
-            {this.#children.map((child) => child.render())}
+            {this.id}, {this.#name}
+            {this.children.map((child) => child.render())}
           </span>
         </label>
       </div>
@@ -337,7 +367,7 @@ export class CompositeNode {
 }
 
 // export class RootNode {
-//   #children: CompositeNode[];
+//   children: CompositeNode[];
 //   #checkedIds: Record<string, boolean>;
 //   constructor(naics: NaicsHierarchyItem[]) {
 //     naics.sort(
@@ -357,20 +387,20 @@ export class CompositeNode {
 //   }
 
 //   addChild(newNode: CompositeNode) {
-//     const myChildThatIsAParent = this.#children.find((myChild) =>
+//     const myChildThatIsAParent = this.children.find((myChild) =>
 //       myChild.isAncestorById(newNode.getId()),
 //     );
 //     if (myChildThatIsAParent) {
 //       return myChildThatIsAParent.addChild(newNode);
 //     }
-//     this.#children.push(newNode);
+//     this.children.push(newNode);
 //   }
 
 //   render() {
 //     return (
 //       <>
 //         <h1>Root</h1>
-//         {this.#children.forEach((child) =>
+//         {this.children.forEach((child) =>
 //           child.render({ checkedIds: this.#checkedIds }),
 //         )}
 //       </>
