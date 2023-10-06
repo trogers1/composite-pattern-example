@@ -1,7 +1,7 @@
 'use client';
 import { Dispatch, useEffect, useReducer } from 'react';
-import { CompositeNode } from '@/components/Hierarchy/Hierarchy';
-import { naicsHierarchy, NaicsHierarchyItem } from '@/components/Hierarchy/naics';
+import { CompositeNode } from '@/components/CompositeNode/CompositeNode';
+import { naicsHierarchy, NaicsHierarchyItem } from '@/components/CompositeNode/naics';
 
 const hierarchyReducer = (
   prevState: CompositeNode[],
@@ -40,7 +40,7 @@ const initializeState = (
         // We already added the child in previous iterations, so skip
         return acc;
       }
-      return curr.addChild({ item: industry, subtreeState: { selected: [], notSelected: [], undetermined: [] } });
+      return curr.addChild({ item: industry });
     }, null);
     if (!didAddChild) {
       const newRoot = new CompositeNode({
@@ -48,7 +48,6 @@ const initializeState = (
         name: industry.name,
         parent: null,
         onChange: (args) => onChange({ type: 'update-root-nodes', newRoots: [args.root] }),
-        subtreeState: { selected: [], notSelected: [], undetermined: [] },
       });
       hierarchies.push(newRoot);
     }
@@ -70,14 +69,18 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-start justify-between p-24">
       <div className="z-10 w-full max-w-5xl items-start justify-between font-mono text-sm lg:flex"></div>
       {state
-        ? state.map((node) => (
-            <>
-              <div>Rollup: {node.recalculateSubtreeSelection({}).subtreeState.selected.join(', ')} </div>
-              <div className="p-4" key={node.getId()}>
-                {node.render()}
-              </div>
-            </>
-          ))
+        ? state.map((node) => {
+            const { subtreeState } = node.recalculateSubtreeSelection({ shouldRollup: true });
+            console.log({ nodeId: node.id, subtreeState });
+            return (
+              <>
+                <div>Rollup: {subtreeState.selected.join(', ')} </div>
+                <div className="p-4" key={node.getId()}>
+                  {node.render()}
+                </div>
+              </>
+            );
+          })
         : ''}
     </main>
   );

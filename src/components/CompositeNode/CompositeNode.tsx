@@ -7,6 +7,12 @@ type ChildrenState = {
   undetermined: string[];
   notSelected: string[];
 };
+export type CompositeNodeConstructorArgs = {
+  id: string;
+  name: string;
+  parent: CompositeNode | null;
+  onChange: (args: { root: CompositeNode; subtreeState: ChildrenState }) => void;
+};
 export class CompositeNode {
   /*
     Needs:
@@ -23,19 +29,13 @@ export class CompositeNode {
   children: CompositeNode[];
   isSelected: SelectionValue;
 
-  constructor(props: {
-    id: string;
-    name: string;
-    parent: CompositeNode | null;
-    onChange: (args: { root: CompositeNode; subtreeState: ChildrenState }) => void;
-    subtreeState: ChildrenState;
-  }) {
-    // super(props);
-    this.#name = props.name;
-    this.id = props.id;
-    this.#parent = props.parent;
-    this.isSelected = props.subtreeState.selected.includes(props.id) ? 1 : -1;
-    this.#onChange = props.onChange;
+  constructor(args: CompositeNodeConstructorArgs) {
+    // super(args);
+    this.#name = args.name;
+    this.id = args.id;
+    this.#parent = args.parent;
+    this.isSelected = -1;
+    this.#onChange = args.onChange;
     this.children = [];
   }
 
@@ -44,6 +44,9 @@ export class CompositeNode {
   }
   getName() {
     return this.#name;
+  }
+  getParent() {
+    return this.#parent;
   }
   getChildren() {
     return this.children;
@@ -75,7 +78,7 @@ export class CompositeNode {
     this.children.forEach((child) => child.setSelectionValueForSelfAndChildren(newSelectedStatus));
     if (this.#parent) {
       console.log(`${this.id} has a parent after setting state. Must recalculate...`);
-      return this.#parent.recalculateSubtreeSelection({});
+      return this.#parent.recalculateSubtreeSelection({ shouldRollup: true });
     }
     const subtreeState: ChildrenState = this.isSelected
       ? { selected: [this.id], notSelected: [], undetermined: [] }
@@ -85,73 +88,62 @@ export class CompositeNode {
     return { root: this, subtreeState };
   }
 
-  getRollupState(childrenStates: ChildrenState): SelectionValue {
+  getSelectionStatusConsideringRollup(childrenStates: ChildrenState, currNode: CompositeNode): SelectionValue {
     if (!childrenStates.notSelected.length && !childrenStates.selected.length && !childrenStates.undetermined.length) {
-      // not sure about this one...
-      return -1;
+      // No children. So 'rollup' state is it's own state
+      return currNode.isSelected;
     }
     if (childrenStates.undetermined.length) {
-      // If any children are undetermined, so is this parent.
+      // If any children are undetermined, so is this node.
       return 0;
     }
     if (childrenStates.notSelected.length && !childrenStates.selected.length) {
+      // We only have notSelected children, so we're not selected
       return -1;
     }
     if (childrenStates.selected.length && !childrenStates.notSelected.length) {
+      // We only have selected children, so we're also selected
       return 1;
     }
+    // Some are selected, some not. Undetermined.
     return 0;
   }
 
-  /**
-   * Retrieve a collated subtree state for all children of a given node
-   */
-  getSubtreeState(node: CompositeNode): ChildrenState {
-    return node
-      .getChildren()
-      .map((childNode) => childNode.getChildrenState({}))
-      .reduce(
-        (childrenState: ChildrenState, currChildState) => {
-          childrenState.selected = [...childrenState.selected, ...currChildState.selected];
-          childrenState.notSelected = [...childrenState.notSelected, ...currChildState.notSelected];
-          childrenState.undetermined = [...childrenState.undetermined, ...currChildState.undetermined];
-          return childrenState;
-        },
-        { notSelected: [], undetermined: [], selected: [] }
-      );
-  }
+  // /**
+  //  * Retrieve a collated subtree state for all children of a given node
+  //  */
+  // getSubtreeState(node: CompositeNode): ChildrenState {
+  //   return node
+  //     .getChildren()
+  //     .map((childNode) => childNode.getChildrenState({}))
+  //     .reduce(
+  //       (childrenState: ChildrenState, currChildState) => {
+  //         childrenState.selected = [...childrenState.selected, ...currChildState.selected];
+  //         childrenState.notSelected = [...childrenState.notSelected, ...currChildState.notSelected];
+  //         childrenState.undetermined = [...childrenState.undetermined, ...currChildState.undetermined];
+  //         return childrenState;
+  //       },
+  //       { notSelected: [], undetermined: [], selected: [] }
+  //     );
+  // }
 
   /**
    * Get an object with the current arrays for each possible state for each id (with rollup)
-   *
-   * @param isFullRefresh boolean used to determine if each child status should be believed, or if all descendents should be checked to determine child status
    */
-  getChildrenState({ isFullRefresh }: { isFullRefresh?: boolean }): ChildrenState {
+  getChildrenState({ shouldRollup }: { shouldRollup: boolean }): ChildrenState {
     return this.children.reduce(
       (acc: ChildrenState, curr: CompositeNode) => {
-        if (isFullRefresh) {
-          const subtreeState = this.getSubtreeState(curr);
-          acc.selected = [...acc.selected, ...subtreeState.selected];
-          acc.notSelected = [...acc.notSelected, ...subtreeState.notSelected];
-          acc.undetermined = [...acc.undetermined, ...subtreeState.undetermined];
-          const rollupValue = this.getRollupState(subtreeState);
-        }
-        if (curr.getIsSelected() === 1) {
-          // Assume all children are selected as well and skip
-          // This is a rollup!
-          acc.selected.push(curr.getId());
-          return acc;
-        }
-        if (curr.getIsSelected() === -1) {
-          acc.notSelected.push(curr.getId());
-        }
-        if (curr.getIsSelected() === 0) {
-          acc.undetermined.push(curr.getId());
-          // Undetermined means we need to keep going to not lose track of our selected and notSelected children
-          const subtreeState = this.getSubtreeState(curr);
-          acc.selected = [...acc.selected, ...subtreeState.selected];
-          acc.notSelected = [...acc.notSelected, ...subtreeState.notSelected];
-          acc.undetermined = [...acc.undetermined, ...subtreeState.undetermined];
+        const currSubtreeState = curr.getChildrenState({ shouldRollup });
+        const rollupValue = this.getSelectionStatusConsideringRollup(currSubtreeState, curr);
+        switch (rollupValue) {
+          case -1:
+            acc.notSelected = [curr.id, ...acc.notSelected];
+          case 1:
+            acc.selected = [curr.id, ...acc.selected];
+          default:
+            acc.selected = [...currSubtreeState.selected, ...acc.selected];
+            acc.notSelected = [...currSubtreeState.notSelected, ...acc.notSelected];
+            acc.undetermined = [curr.id, ...currSubtreeState.undetermined, ...acc.undetermined];
         }
         return acc;
       },
@@ -166,13 +158,13 @@ export class CompositeNode {
    *
    * @param isFullRefresh boolean used to determine if each child status should be believed, or if all descendents should be checked to determine child status
    */
-  recalculateSubtreeSelection({ isFullRefresh }: { isFullRefresh?: boolean }): {
+  recalculateSubtreeSelection({ shouldRollup }: { shouldRollup: boolean }): {
     root: CompositeNode;
     subtreeState: ChildrenState;
   } {
-    const childStates = this.getChildrenState({ isFullRefresh });
+    const childStates = this.getChildrenState({ shouldRollup });
     console.log({ recalcState: childStates });
-    const newSelectionValueWithRollup = this.getRollupState(childStates);
+    const newSelectionValueWithRollup = this.getSelectionStatusConsideringRollup(childStates, this);
     console.log({
       id: this.id,
       recalcNewSelectionValueWithRollup: newSelectionValueWithRollup,
@@ -183,7 +175,7 @@ export class CompositeNode {
       console.log(
         `${this.#parent.getId()} exists and old (${oldSelectionStatus}) !== new (${newSelectionValueWithRollup})`
       );
-      return this.#parent.recalculateSubtreeSelection({});
+      return this.#parent.recalculateSubtreeSelection({ shouldRollup: true });
     }
     console.log(`No more parents (or status is the same)`);
     console.log(`returning from recalc: ${this.getId()}, ${JSON.stringify(childStates)}`);
@@ -199,15 +191,7 @@ export class CompositeNode {
    *
    * @returns the parent node that the child was added to.
    */
-  addChild({
-    item,
-    node,
-    subtreeState,
-  }: {
-    item?: NaicsHierarchyItem;
-    node?: CompositeNode;
-    subtreeState: ChildrenState;
-  }): CompositeNode | null {
+  addChild({ item, node }: { item?: NaicsHierarchyItem; node?: CompositeNode }): CompositeNode | null {
     const id = item?.id || node!.getId();
     if (!this.isAncestorById(id)) {
       return null;
@@ -220,9 +204,8 @@ export class CompositeNode {
           name: item!.name,
           parent: null,
           onChange: this.#onChange,
-          subtreeState,
         });
-      const parent = newNode.addChild({ node: this, subtreeState });
+      const parent = newNode.addChild({ node: this });
       if (!parent) {
         throw new Error(`Couldn't add self to parent! newNode: ${newNode.getId()}; self: ${this.getId()}`);
       }
@@ -230,9 +213,7 @@ export class CompositeNode {
     }
     const myChildThatIsAParent = this.children.find((myChild) => myChild.isAncestorById(id));
     if (myChildThatIsAParent) {
-      return item
-        ? myChildThatIsAParent.addChild({ item: item, subtreeState })
-        : myChildThatIsAParent.addChild({ node: node, subtreeState });
+      return item ? myChildThatIsAParent.addChild({ item: item }) : myChildThatIsAParent.addChild({ node: node });
     }
     // child should be a direct child CompositeNode
     const childNode =
@@ -242,7 +223,6 @@ export class CompositeNode {
         name: item!.name,
         parent: this,
         onChange: this.#onChange,
-        subtreeState,
       });
     this.children.push(childNode);
     return this;
