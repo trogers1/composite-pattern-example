@@ -8,23 +8,28 @@
     "start": "next start",
     "lint": "next lint",
     "prettier:fix": "prettier --write .",
-    "prettier:check": "prettier --check ."
+    "prettier:check": "prettier --check .",
+    "test": "jest"
   },
   "dependencies": {
+    "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "next": "latest"
+    "ts-node": "^10.9.1"
   },
   "devDependencies": {
-    "typescript": "latest",
-    "@types/react": "latest",
+    "@types/jest": "^29.5.5",
     "@types/node": "latest",
+    "@types/react": "latest",
     "@types/react-dom": "latest",
     "autoprefixer": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "jest": "^29.7.0",
     "postcss": "latest",
     "prettier": "^3.0.3",
     "tailwindcss": "latest",
-    "eslint": "latest",
-    "eslint-config-next": "latest"
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
   }
 }
