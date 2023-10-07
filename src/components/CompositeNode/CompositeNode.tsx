@@ -11,6 +11,7 @@ export type CompositeNodeConstructorArgs = {
   id: string;
   name: string;
   parent: CompositeNode | null;
+  children?: CompositeNode[];
   onChange: (args: { root: CompositeNode; subtreeState: ChildrenState }) => void;
 };
 export class CompositeNode {
@@ -36,7 +37,7 @@ export class CompositeNode {
     this.#parent = args.parent;
     this.isSelected = -1;
     this.#onChange = args.onChange;
-    this.children = [];
+    this.children = args.children || [];
   }
 
   getId() {
@@ -46,6 +47,10 @@ export class CompositeNode {
     return this.#name;
   }
   getParent() {
+    return this.#parent;
+  }
+  setParent(parent: CompositeNode | null) {
+    this.#parent = parent;
     return this.#parent;
   }
   getChildren() {
@@ -64,8 +69,11 @@ export class CompositeNode {
         return undefined;
     }
   }
-  getRoot() {
-    return this.#parent || this;
+  getRoot(): CompositeNode {
+    if (this.#parent) {
+      return this.#parent.getRoot();
+    }
+    return this;
   }
 
   /**
@@ -184,32 +192,34 @@ export class CompositeNode {
 
   /**
    * Attempt to add a NaicsHierarchyItem or CompositeNode as a child to this node. It may be added recursively to children
-   * of the children of this CompositeNode, if applicable. If it is a parent to this node, this will be added as a child and
-   * the new parent node will be returned.
+   * of the children of this CompositeNode, if applicable. If it is a parent to this node, this will be added as a child.
    *
    * The function will NOT add a new child to it's children if it is not a valid ancestor.
    *
-   * @returns the parent node that the child was added to.
+   * @returns the top-level root node for the tree this child was added to, or `null` if no relation.
    */
   addChild({ item, node }: { item?: NaicsHierarchyItem; node?: CompositeNode }): CompositeNode | null {
     const id = item?.id || node!.getId();
     if (!this.isAncestorById(id)) {
-      return null;
-    }
-    if (this.isChildById(id)) {
-      const newNode =
-        node ||
-        new CompositeNode({
-          id: item!.id,
-          name: item!.name,
-          parent: null,
-          onChange: this.#onChange,
-        });
-      const parent = newNode.addChild({ node: this });
-      if (!parent) {
-        throw new Error(`Couldn't add self to parent! newNode: ${newNode.getId()}; self: ${this.getId()}`);
+      if (this.isChildById(id)) {
+        const newParentNode =
+          node ||
+          new CompositeNode({
+            id: item!.id,
+            name: item!.name,
+            parent: this.#parent,
+            onChange: this.#onChange,
+          });
+        newParentNode.setParent(this.#parent); // required to reset this if newParentNode is already a node
+        const root = newParentNode.addChild({ node: this });
+        if (!root) {
+          throw new Error(
+            `Couldn't add self to parent! newParentNode: ${newParentNode.getId()}; self: ${this.getId()}`
+          );
+        }
+        return root;
       }
-      return parent;
+      return null;
     }
     const myChildThatIsAParent = this.children.find((myChild) => myChild.isAncestorById(id));
     if (myChildThatIsAParent) {
@@ -224,8 +234,9 @@ export class CompositeNode {
         parent: this,
         onChange: this.#onChange,
       });
+    childNode.setParent(this); // required if the childNode was already a node
     this.children.push(childNode);
-    return this;
+    return this.getRoot();
   }
 
   /**
