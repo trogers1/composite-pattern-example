@@ -12,7 +12,7 @@ export type CompositeNodeConstructorArgs = {
   name: string;
   parent: CompositeNode | null;
   children?: CompositeNode[];
-  onChange: (args: { root: CompositeNode; subtreeState: ChildrenState }) => void;
+  onChange?: (args: { root: CompositeNode; subtreeState: ChildrenState }) => void;
 };
 export class CompositeNode {
   /*
@@ -25,7 +25,7 @@ export class CompositeNode {
     */
   #name: string;
   id: string;
-  #onChange: (args: ReturnType<typeof this.setSelectionValueForSelfAndChildren>) => void;
+  #onChange?: (args: ReturnType<typeof this.setSelectionValueForSelfAndChildren>) => void;
   #parent: CompositeNode | null;
   children: CompositeNode[];
   isSelected: SelectionValue;
@@ -54,6 +54,10 @@ export class CompositeNode {
     return this.#parent;
   }
   getChildren() {
+    return this.children;
+  }
+  setChildren(children: CompositeNode[]) {
+    this.children = children;
     return this.children;
   }
   getIsSelected() {
@@ -201,7 +205,7 @@ export class CompositeNode {
   addChild({ item, node }: { item?: NaicsHierarchyItem; node?: CompositeNode }): CompositeNode | null {
     const id = item?.id || node!.getId();
     if (!this.isAncestorById(id)) {
-      if (this.isChildById(id)) {
+      if (this.isDescendantById(id)) {
         const newParentNode =
           node ||
           new CompositeNode({
@@ -211,12 +215,16 @@ export class CompositeNode {
             onChange: this.#onChange,
           });
         newParentNode.setParent(this.#parent); // required to reset this if newParentNode is already a node
+        // We can't be sure that the
+        const childrenToReAdd = [...this.children];
+        this.children = [];
         const root = newParentNode.addChild({ node: this });
-        if (!root) {
+        if (!root || root.getId() !== newParentNode.getId()) {
           throw new Error(
             `Couldn't add self to parent! newParentNode: ${newParentNode.getId()}; self: ${this.getId()}`
           );
         }
+        childrenToReAdd.forEach((parentlessChild) => root.addChild({ node: parentlessChild }));
         return root;
       }
       return null;
@@ -250,10 +258,10 @@ export class CompositeNode {
     return false;
   }
   /**
-   * Determines if this node should be the child of a particular ID
-   * E.g. "151" should be a child of "15", and "216" should be a child of "21"
+   * Determines if this node should be the descendant of a particular ID
+   * E.g. "151" should be a descendant of "15", and "2168" should be a descendant of "21"
    *  */
-  isChildById(id: string): boolean {
+  isDescendantById(id: string): boolean {
     if (id.length < this.id.length && this.id.startsWith(id)) {
       return true;
     }
@@ -276,7 +284,7 @@ export class CompositeNode {
               const changeResults = this.setSelectionValueForSelfAndChildren(newSelectedStatus);
               console.log('Calling #onChange with...');
               console.log({ changeResults });
-              this.#onChange(changeResults);
+              this.#onChange && this.#onChange(changeResults);
             }}
             checked={this.getIsSelectedAsBoolOrUndefined()}
             ref={(input) => {
