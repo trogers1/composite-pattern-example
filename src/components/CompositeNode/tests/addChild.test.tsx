@@ -147,7 +147,6 @@ describe('CompositeNode', () => {
         children: [initialNode],
         parent: null,
       });
-      console.log({ rootResult, child: rootResult?.getChildren()[0] });
       // Make sure no children were added to the initialNode and that the node remains unmolested
       checkNodeProperties({
         node: initialNode,
@@ -158,7 +157,7 @@ describe('CompositeNode', () => {
         name: initialNode.getName(),
       });
     });
-    it('should create a new Node (adding the initial node as a child) and return it if the potential child should, in fact, be the parent node through MULTIPLE generations', () => {
+    it('should create a new Node (adding the initial node as a child) and return it as the root if the potential child should, in fact, be the parent node through MULTIPLE generations', () => {
       const initialNode: CompositeNode = new CompositeNode({
         id: '4399',
         name: 'test1',
@@ -190,7 +189,7 @@ describe('CompositeNode', () => {
       });
 
       // Make sure initial node is the child of potentialChild
-      expect(rootResult!.getChildren()[0].getChildren()).toStrictEqual(1);
+      expect(rootResult!.getChildren()[0].getChildren().length).toStrictEqual(1);
       checkNodeProperties({
         node: rootResult!.getChildren()[0].getChildren()[0],
         isSelected: -1,
@@ -198,6 +197,19 @@ describe('CompositeNode', () => {
         id: initialNode.getId(),
         name: initialNode.getName(),
       });
+    });
+    it('should add a new node in the middle of a tree, grabbing a single child', () => {
+      const node4391 = new CompositeNode({ id: '4391', name: 'test4391', parent: null });
+      const node439 = new CompositeNode({ id: '439', name: 'test439', parent: null, children: [node4391] });
+      const node438 = new CompositeNode({ id: '438', name: 'test438', parent: null });
+      const node43 = new CompositeNode({ id: '43', name: 'test43', parent: null, children: [node438, node439] });
+      expect(node43.getChildren()).toStrictEqual([node438, node439]);
+      let removedNode = node43.removeChildById('439');
+      expect(removedNode).toStrictEqual(node439);
+      expect(node43.getChildren()).toStrictEqual([node438]);
+      removedNode = node43.removeChildById('438');
+      expect(removedNode).toStrictEqual(node438);
+      expect(node43.getChildren()).toStrictEqual([]);
     });
     it.skip("should add a child node multiple levels deep, if appropriate, and return it's new parent", () => {
       expect(false);
