@@ -195,6 +195,24 @@ export class CompositeNode {
   }
 
   /**
+   * Removes a child from `children` from this node if it matches by `id`. If removal is successful,
+   * the node is returned. Otherwise, if no matching child was found, returns `null`.
+   */
+  removeChildById(id: string): CompositeNode | null {
+    const currChildren = [...this.children];
+    let removedChild: CompositeNode | null = null;
+    this.children = currChildren.reduce((acc: CompositeNode[], curr: CompositeNode) => {
+      if (curr.getId() !== id) {
+        acc.push(curr);
+      } else {
+        removedChild = curr;
+      }
+      return acc;
+    }, []);
+    return removedChild;
+  }
+
+  /**
    * Attempt to add a NaicsHierarchyItem or CompositeNode as a child to this node. It may be added recursively to children
    * of the children of this CompositeNode, if applicable. If it is a parent to this node, this will be added as a child.
    *
@@ -215,16 +233,14 @@ export class CompositeNode {
             onChange: this.#onChange,
           });
         newParentNode.setParent(this.#parent); // required to reset this if newParentNode is already a node
-        // We can't be sure that the
-        const childrenToReAdd = [...this.children];
-        this.children = [];
+        if (newParentNode.getParent()) {
+        }
         const root = newParentNode.addChild({ node: this });
         if (!root || root.getId() !== newParentNode.getId()) {
           throw new Error(
             `Couldn't add self to parent! newParentNode: ${newParentNode.getId()}; self: ${this.getId()}`
           );
         }
-        childrenToReAdd.forEach((parentlessChild) => root.addChild({ node: parentlessChild }));
         return root;
       }
       return null;
