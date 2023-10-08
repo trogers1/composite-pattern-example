@@ -40,6 +40,18 @@ export class CompositeNode {
     this.children = args.children || [];
   }
 
+  toString() {
+    return `
+{
+  id: ${this.id},
+  name: ${this.#name},
+  parent: ${this.#parent ? this.#parent.getId() : this.#parent},
+  isSelected: ${this.isSelected},
+  children: [${this.children.map((child) => child.getId()).join(', ')}],
+}
+`;
+  }
+
   getId() {
     return this.id;
   }
