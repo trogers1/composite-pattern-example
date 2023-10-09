@@ -39,7 +39,7 @@ describe('CompositeNode', () => {
         name: potentialChild.name,
       });
     });
-    it.only('should NOT the a child of the same ID twice (nor will it overwrite the child)', () => {
+    it('should NOT add a child of the same ID twice (nor will it overwrite the child)', () => {
       const parent: CompositeNode = new CompositeNode({
         id: '34',
         name: 'test34',
@@ -234,7 +234,7 @@ describe('CompositeNode', () => {
         name: initialNode.getName(),
       });
     });
-    it.only('should add a new node in the middle of a tree, adopting a single child', () => {
+    it('should add a new node in the middle of a tree, adopting a single child', () => {
       const node4391 = new CompositeNode({ id: '4391', name: 'test4391', parent: null });
       const node439 = new CompositeNode({ id: '439', name: 'test439', parent: null, children: [node4391] });
       // const node438 = new CompositeNode({ id: '438', name: 'test438', parent: null });
@@ -253,7 +253,7 @@ describe('CompositeNode', () => {
       const node439 = new CompositeNode({ id: '439', name: 'test439', parent: null, children: [node4391] });
       const node438 = new CompositeNode({ id: '438', name: 'test438', parent: null });
       const node4 = new CompositeNode({ id: '4', name: 'test4', parent: null, children: [node438, node439] });
-      expect(node4.getChildren()).toStrictEqual([node439]);
+      expect(node4.getChildren()).toStrictEqual([node438, node439]);
       const newNode: NaicsHierarchyItem = { id: '43', name: 'test43' };
       const root = node439.addChild({ item: newNode });
       expect(root).toStrictEqual(node4);
@@ -298,7 +298,7 @@ describe('CompositeNode', () => {
         name: potentialChild.getName(),
       });
     });
-    it.only('should NOT the a child of the same ID twice (nor will it overwrite the child)', () => {
+    it('should NOT the a child of the same ID twice (nor will it overwrite the child)', () => {
       const parent: CompositeNode = new CompositeNode({
         id: '34',
         name: 'test34',
@@ -439,7 +439,7 @@ describe('CompositeNode', () => {
       const potentialChild: CompositeNode = new CompositeNode({
         id: '439',
         name: 'test2',
-        parent: initialNode,
+        parent: null,
       });
       const rootResult = initialNode.addChild({ node: potentialChild });
       expect(rootResult).toBeInstanceOf(CompositeNode); // it wasn't added as a child, it was added as a parent!
@@ -501,7 +501,7 @@ describe('CompositeNode', () => {
         name: initialNode.getName(),
       });
     });
-    it.only('should add a new node in the middle of a tree, adopting a single child', () => {
+    it('should add a new node in the middle of a tree, adopting a single child', () => {
       const node4391 = new CompositeNode({ id: '4391', name: 'test4391', parent: null });
       const node439 = new CompositeNode({ id: '439', name: 'test439', parent: null, children: [node4391] });
       // const node438 = new CompositeNode({ id: '438', name: 'test438', parent: null });
@@ -520,7 +520,7 @@ describe('CompositeNode', () => {
       const node439 = new CompositeNode({ id: '439', name: 'test439', parent: null, children: [node4391] });
       const node438 = new CompositeNode({ id: '438', name: 'test438', parent: null });
       const node4 = new CompositeNode({ id: '4', name: 'test4', parent: null, children: [node438, node439] });
-      expect(node4.getChildren()).toStrictEqual([node439]);
+      expect(node4.getChildren()).toStrictEqual([node438, node439]);
       const newNode: CompositeNode = new CompositeNode({ id: '43', name: 'test43', parent: null });
       const root = node439.addChild({ node: newNode });
       expect(root).toStrictEqual(node4);
