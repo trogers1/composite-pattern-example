@@ -4,7 +4,6 @@ describe('CompositeNode', () => {
   describe('constructor', () => {
     it('should print out a simple node correctly', () => {
       const node1 = new CompositeNode({ id: '1', name: 'test1', parent: null, onChange: (args) => 'test' });
-      console.log(node1.toString());
       expect(node1.toString()).toStrictEqual(`
 {
   id: 1,
@@ -19,6 +18,28 @@ describe('CompositeNode', () => {
       const node98 = new CompositeNode({ id: '98', name: 'test98', parent: null });
       const node987 = new CompositeNode({ id: '987', name: 'test987', parent: null });
       node98.addChild({ node: node987 });
+      expect(node98.toString()).toStrictEqual(`
+{
+  id: 98,
+  name: test98,
+  parent: null,
+  isSelected: -1,
+  children: [987],
+}
+`);
+      expect(node987.toString()).toStrictEqual(`
+{
+  id: 987,
+  name: test987,
+  parent: 98,
+  isSelected: -1,
+  children: [],
+}
+`);
+    });
+    it('should print out a node with a parent and a node with a child correctly when child was added during the creation of the parent', () => {
+      const node987 = new CompositeNode({ id: '987', name: 'test987', parent: null });
+      const node98 = new CompositeNode({ id: '98', name: 'test98', parent: null, children: [node987] });
       expect(node98.toString()).toStrictEqual(`
 {
   id: 98,
