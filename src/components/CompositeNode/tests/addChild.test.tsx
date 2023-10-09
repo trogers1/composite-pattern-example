@@ -39,6 +39,43 @@ describe('CompositeNode', () => {
         name: potentialChild.name,
       });
     });
+    it.only('should NOT the a child of the same ID twice (nor will it overwrite the child)', () => {
+      const parent: CompositeNode = new CompositeNode({
+        id: '34',
+        name: 'test34',
+        parent: null,
+        onChange: (args) => 'test',
+      });
+      const potentialChild: NaicsHierarchyItem = { id: '343', name: 'test343' };
+      const potentialChild2: NaicsHierarchyItem = { id: '343', name: 'test343.2' };
+      let rootResult = parent.addChild({ item: potentialChild });
+      expect(rootResult).toStrictEqual(parent);
+      rootResult = parent.addChild({ item: potentialChild2 });
+      expect(rootResult).toStrictEqual(null);
+      const expectedChildFormat = new CompositeNode({
+        id: potentialChild.id,
+        name: potentialChild.name,
+        parent,
+      });
+      checkNodeProperties({
+        node: parent,
+        isSelected: -1,
+        parent: null,
+        children: [expectedChildFormat],
+        id: parent.getId(),
+        name: parent.getName(),
+      });
+      expect(parent.children.length).toStrictEqual(1);
+      expect(parent.children[0]).toStrictEqual(expectedChildFormat);
+      checkNodeProperties({
+        node: parent.children[0],
+        isSelected: -1,
+        parent: parent,
+        children: [],
+        id: potentialChild.id,
+        name: potentialChild.name,
+      });
+    });
     it('should add MULTIPLE children to a potential parent node when appropriate', () => {
       const parent: CompositeNode = new CompositeNode({
         id: '34',
@@ -198,30 +235,36 @@ describe('CompositeNode', () => {
         name: initialNode.getName(),
       });
     });
-    it('should add a new node in the middle of a tree, grabbing a single child', () => {
+    it.only('should add a new node in the middle of a tree, adopting a single child', () => {
+      const node4391 = new CompositeNode({ id: '4391', name: 'test4391', parent: null });
+      const node439 = new CompositeNode({ id: '439', name: 'test439', parent: null, children: [node4391] });
+      // const node438 = new CompositeNode({ id: '438', name: 'test438', parent: null });
+      const node4 = new CompositeNode({ id: '4', name: 'test4', parent: null, children: [node439] });
+      console.log(node4391.toString());
+      console.log(node439.toString());
+      console.log(node4.toString());
+      expect(node4.getChildren()).toStrictEqual([node439]);
+      const node43: NaicsHierarchyItem = { id: '43', name: 'test43' };
+      console.log(node43.toString());
+      const root = node439.addChild({ item: node43 });
+
+      expect(root).toStrictEqual(node4);
+      expect(root!.getChildren()).toStrictEqual([
+        new CompositeNode({ id: node43.id, name: node43.name, children: [node439], parent: node4 }),
+      ]);
+    });
+    it('should add a new node in the middle of a tree, adopting multiple children', () => {
       const node4391 = new CompositeNode({ id: '4391', name: 'test4391', parent: null });
       const node439 = new CompositeNode({ id: '439', name: 'test439', parent: null, children: [node4391] });
       const node438 = new CompositeNode({ id: '438', name: 'test438', parent: null });
-      const node43 = new CompositeNode({ id: '43', name: 'test43', parent: null, children: [node438, node439] });
-      expect(node43.getChildren()).toStrictEqual([node438, node439]);
-      let removedNode = node43.removeChildById('439');
-      expect(removedNode).toStrictEqual(node439);
-      expect(node43.getChildren()).toStrictEqual([node438]);
-      removedNode = node43.removeChildById('438');
-      expect(removedNode).toStrictEqual(node438);
-      expect(node43.getChildren()).toStrictEqual([]);
-    });
-    it.skip("should add a child node multiple levels deep, if appropriate, and return it's new parent", () => {
-      expect(false);
-    });
-    it.skip('should add a child node if appropriate', () => {
-      expect(false);
-    });
-    it.skip('should add a child node if appropriate', () => {
-      expect(false);
-    });
-    it.skip('should add a child node if appropriate', () => {
-      expect(false);
+      const node4 = new CompositeNode({ id: '4', name: 'test4', parent: null, children: [node438, node439] });
+      expect(node4.getChildren()).toStrictEqual([node439]);
+      const newNode: NaicsHierarchyItem = { id: '43', name: 'test43' };
+      const root = node439.addChild({ item: newNode });
+      expect(root).toStrictEqual(node4);
+      expect(root!.getChildren()).toStrictEqual([
+        new CompositeNode({ id: newNode.id, name: newNode.name, children: [node438, node439], parent: node4 }),
+      ]);
     });
   });
   describe('addChild: CompositeNode', () => {

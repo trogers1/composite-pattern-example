@@ -37,7 +37,12 @@ export class CompositeNode {
     this.#parent = args.parent;
     this.isSelected = -1;
     this.#onChange = args.onChange;
-    this.children = args.children || [];
+    if (args.children) {
+      this.children = args.children;
+      this.children.forEach((child) => child.setParent(this));
+    } else {
+      this.children = [];
+    }
   }
 
   toString() {
@@ -229,11 +234,16 @@ export class CompositeNode {
    * of the children of this CompositeNode, if applicable. If it is a parent to this node, this will be added as a child.
    *
    * The function will NOT add a new child to it's children if it is not a valid ancestor.
+   * The function will NOT add a new child if it's ID matches a current child. Instead it will return `null`
    *
-   * @returns the top-level root node for the tree this child was added to, or `null` if no relation.
+   * @returns the top-level root node for the tree this child was added to, or `null` if unsuccessful.
    */
   addChild({ item, node }: { item?: NaicsHierarchyItem; node?: CompositeNode }): CompositeNode | null {
     const id = item?.id || node!.getId();
+    if (this.children.some((child) => child.getId() === id)) {
+      // This node already has a child that matches. Return `null`.
+      return null;
+    }
     if (!this.isAncestorById(id)) {
       if (this.isDescendantById(id)) {
         // If this node has a parent, we should add the new node to the parent until we
