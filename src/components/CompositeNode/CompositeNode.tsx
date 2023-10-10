@@ -2,7 +2,7 @@ import { NaicsHierarchyItem } from './naics';
 
 export type SelectionValue = -1 | 0 | 1;
 
-type ChildrenState = {
+export type ChildrenState = {
   selected: string[];
   undetermined: string[];
   notSelected: string[];
