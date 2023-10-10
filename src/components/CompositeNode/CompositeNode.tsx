@@ -177,17 +177,22 @@ export class CompositeNode {
 
   /**
    * Get an object with the current arrays for each possible state for each id (with rollup)
+   *
+   * This function will assume that the state for each node is accurate and not traverse further if
+   * the current node has a isSelected value of -1 or 1 (because any children should match)
    */
   getChildrenState(): ChildrenState {
     return this.children.reduce(
       (acc: ChildrenState, curr: CompositeNode) => {
-        const childrenState = curr.getChildrenState();
         switch (curr.getIsSelected()) {
           case -1:
-            acc.notSelected = [curr.id, ...acc.notSelected];
+            acc.notSelected.push(curr.id);
+            break;
           case 1:
-            acc.selected = [curr.id, ...acc.selected];
+            acc.selected.push(curr.id);
+            break;
           default:
+            const childrenState = curr.getChildrenState();
             acc.selected = [...childrenState.selected, ...acc.selected];
             acc.notSelected = [...childrenState.notSelected, ...acc.notSelected];
             acc.undetermined = [curr.id, ...childrenState.undetermined, ...acc.undetermined];
@@ -367,6 +372,7 @@ export class CompositeNode {
               this.#onChange && this.#onChange(changeResults);
             }}
             checked={this.getIsSelectedAsBoolOrUndefined()}
+            data-indeterminate={this.getIsSelectedAsBoolOrUndefined() === undefined}
             ref={(input) => {
               if (input) {
                 input.indeterminate = this.getIsSelectedAsBoolOrUndefined() === undefined;
