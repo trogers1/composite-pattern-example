@@ -1,4 +1,4 @@
-import { CompositeNode, RecalculateIsSelectedArgs } from '../CompositeNode';
+import { CompositeNode, RecalculateIsSelectedArgs, RecalculateIsSelectedReturnType } from '../CompositeNode';
 describe('CompositeNode', () => {
   describe('setIsSelectedForSelfAndChildren', () => {
     describe('root node: ', () => {
@@ -11,20 +11,20 @@ describe('CompositeNode', () => {
           node1391.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 0 })
         ).toStrictEqual({
           root: node1391,
-          subtreeState: {
+          state: {
             selected: [],
             notSelected: [],
-            undetermined: ['1391'],
+            undetermined: [],
           },
         });
         expect(
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 0 })
         ).toStrictEqual({
           root: node43,
-          subtreeState: {
+          state: {
             selected: [],
             notSelected: [],
-            undetermined: ['43'],
+            undetermined: [],
           },
         });
         expect(node1391.getIsSelected()).toStrictEqual(0);
@@ -33,8 +33,8 @@ describe('CompositeNode', () => {
           node1391.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 1 })
         ).toStrictEqual({
           root: node1391,
-          subtreeState: {
-            selected: ['1391'],
+          state: {
+            selected: [],
             notSelected: [],
             undetermined: [],
           },
@@ -43,8 +43,8 @@ describe('CompositeNode', () => {
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 1 })
         ).toStrictEqual({
           root: node43,
-          subtreeState: {
-            selected: ['43'],
+          state: {
+            selected: [],
             notSelected: [],
             undetermined: [],
           },
@@ -55,9 +55,9 @@ describe('CompositeNode', () => {
           node1391.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: -1 })
         ).toStrictEqual({
           root: node1391,
-          subtreeState: {
+          state: {
             selected: [],
-            notSelected: ['1391'],
+            notSelected: [],
             undetermined: [],
           },
         });
@@ -65,9 +65,9 @@ describe('CompositeNode', () => {
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: -1 })
         ).toStrictEqual({
           root: node43,
-          subtreeState: {
+          state: {
             selected: [],
-            notSelected: ['43'],
+            notSelected: [],
             undetermined: [],
           },
         });
@@ -95,10 +95,10 @@ describe('CompositeNode', () => {
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 0 })
         ).toStrictEqual({
           root: node43,
-          subtreeState: {
+          state: {
             selected: [],
             notSelected: [],
-            undetermined: ['43'],
+            undetermined: ['435', '439', '438'],
           },
         });
         expect(node43.getIsSelected()).toStrictEqual(0);
@@ -111,8 +111,8 @@ describe('CompositeNode', () => {
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 1 })
         ).toStrictEqual({
           root: node43,
-          subtreeState: {
-            selected: ['43'],
+          state: {
+            selected: ['438', '439', '435'],
             notSelected: [],
             undetermined: [],
           },
@@ -127,9 +127,9 @@ describe('CompositeNode', () => {
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: -1 })
         ).toStrictEqual({
           root: node43,
-          subtreeState: {
+          state: {
             selected: [],
-            notSelected: ['43'],
+            notSelected: ['438', '439', '435'],
             undetermined: [],
           },
         });
@@ -158,31 +158,31 @@ describe('CompositeNode', () => {
         expect(
           node435.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: -1 })
         ).toStrictEqual({
-          root: node435,
-          subtreeState: {
+          root: node43,
+          state: {
             selected: [],
-            notSelected: ['435'],
+            notSelected: ['438', '439', '435'],
             undetermined: [],
           },
         });
         expect(
           node438.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 0 })
         ).toStrictEqual({
-          root: node438,
-          subtreeState: {
+          root: node43,
+          state: {
             selected: [],
-            notSelected: [],
+            notSelected: ['439', '435'],
             undetermined: ['438'],
           },
         });
         expect(
           node439.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 1 })
         ).toStrictEqual({
-          root: node439,
-          subtreeState: {
+          root: node43,
+          state: {
             selected: ['439'],
-            notSelected: [],
-            undetermined: [],
+            notSelected: ['435'],
+            undetermined: ['438'],
           },
         });
         expect(node435.getIsSelected()).toStrictEqual(-1);
@@ -195,10 +195,10 @@ describe('CompositeNode', () => {
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 0 })
         ).toStrictEqual({
           root: node43,
-          subtreeState: {
+          state: {
             selected: [],
             notSelected: [],
-            undetermined: ['43'],
+            undetermined: ['435', '439', '438'],
           },
         });
 
@@ -212,31 +212,31 @@ describe('CompositeNode', () => {
         expect(
           node435.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: -1 })
         ).toStrictEqual({
-          root: node435,
-          subtreeState: {
+          root: node43,
+          state: {
             selected: [],
-            notSelected: ['435'],
+            notSelected: ['438', '439', '435'],
             undetermined: [],
           },
         });
         expect(
           node438.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 0 })
         ).toStrictEqual({
-          root: node438,
-          subtreeState: {
+          root: node43,
+          state: {
             selected: [],
-            notSelected: [],
+            notSelected: ['439', '435'],
             undetermined: ['438'],
           },
         });
         expect(
           node439.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 1 })
         ).toStrictEqual({
-          root: node439,
-          subtreeState: {
+          root: node43,
+          state: {
             selected: ['439'],
-            notSelected: [],
-            undetermined: [],
+            notSelected: ['435'],
+            undetermined: ['438'],
           },
         });
         expect(node435.getIsSelected()).toStrictEqual(-1);
@@ -249,8 +249,8 @@ describe('CompositeNode', () => {
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 1 })
         ).toStrictEqual({
           root: node43,
-          subtreeState: {
-            selected: ['43'],
+          state: {
+            selected: ['438', '439', '435'],
             notSelected: [],
             undetermined: [],
           },
@@ -276,10 +276,10 @@ describe('CompositeNode', () => {
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 0 })
         ).toStrictEqual({
           root: node43,
-          subtreeState: {
+          state: {
             selected: [],
             notSelected: [],
-            undetermined: ['43'],
+            undetermined: ['439', '4391', '43917'],
           },
         });
         expect(node43.getIsSelected()).toStrictEqual(0);
@@ -292,8 +292,8 @@ describe('CompositeNode', () => {
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 1 })
         ).toStrictEqual({
           root: node43,
-          subtreeState: {
-            selected: ['43'],
+          state: {
+            selected: ['439'],
             notSelected: [],
             undetermined: [],
           },
@@ -340,11 +340,11 @@ describe('CompositeNode', () => {
         expect(
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: 0 })
         ).toStrictEqual({
-          root: node43,
-          subtreeState: {
+          root: node4,
+          state: {
             selected: [],
             notSelected: [],
-            undetermined: ['43'],
+            undetermined: ['43', '438', '4385', '4391', '43917', '4384', '4391', '43917', '439', '4391', '43917'],
           },
         });
         expect(node4.getIsSelected()).toStrictEqual(-1); // Unchanged
@@ -377,8 +377,8 @@ describe('CompositeNode', () => {
         expect(
           node43.setIsSelectedForSelfAndChildren({ shouldParentRecalculate: false, newSelectedStatus: -1 })
         ).toStrictEqual({
-          root: node43,
-          subtreeState: {
+          root: node4,
+          state: {
             selected: [],
             notSelected: ['43'],
             undetermined: [],
@@ -398,9 +398,9 @@ describe('CompositeNode', () => {
       it('should call recalculateIsSelected on a parent node if it exists if shouldParentRecalculate is set', () => {
         let recalcStateWasRequested = false;
         const parent = new CompositeNode({ id: '1', name: 'test1', parent: null });
-        parent.recalculateIsSelected = ({ shouldRollup }: RecalculateIsSelectedArgs) => {
+        parent.recalculateIsSelected = (): RecalculateIsSelectedReturnType => {
           recalcStateWasRequested = true; // Here we're using the fact that ob
-          return { root: parent, subtreeState: { selected: [], notSelected: [], undetermined: [] } };
+          return { root: parent, state: { selected: [], notSelected: [], undetermined: [] } };
         };
         const child = new CompositeNode({ id: '19', name: 'test19', parent });
         expect(child.getIsSelected()).toStrictEqual(-1);
