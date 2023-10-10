@@ -135,25 +135,26 @@ export class CompositeNode {
     return { root: this, subtreeState };
   }
 
-  getSelectionStatusConsideringRollup(childrenStates: ChildrenState, currNode: CompositeNode): SelectionValue {
-    if (!childrenStates.notSelected.length && !childrenStates.selected.length && !childrenStates.undetermined.length) {
+  deriveIsSelectedFromChildrenStates(): { isSelected: SelectionValue; childrenState: ChildrenState } {
+    const childrenState = this.getChildrenState();
+    if (!childrenState.notSelected.length && !childrenState.selected.length && !childrenState.undetermined.length) {
       // No children. So 'rollup' state is it's own state
-      return currNode.isSelected;
+      return { isSelected: this.isSelected, childrenState };
     }
-    if (childrenStates.undetermined.length) {
+    if (childrenState.undetermined.length) {
       // If any children are undetermined, so is this node.
-      return 0;
+      return { isSelected: 0, childrenState };
     }
-    if (childrenStates.notSelected.length && !childrenStates.selected.length) {
+    if (childrenState.notSelected.length && !childrenState.selected.length) {
       // We only have notSelected children, so we're not selected
-      return -1;
+      return { isSelected: -1, childrenState };
     }
-    if (childrenStates.selected.length && !childrenStates.notSelected.length) {
+    if (childrenState.selected.length && !childrenState.notSelected.length) {
       // We only have selected children, so we're also selected
-      return 1;
+      return { isSelected: 1, childrenState };
     }
     // Some are selected, some not. Undetermined.
-    return 0;
+    return { isSelected: 0, childrenState };
   }
 
   // /**
@@ -177,20 +178,19 @@ export class CompositeNode {
   /**
    * Get an object with the current arrays for each possible state for each id (with rollup)
    */
-  getChildrenState({ shouldRollup }: { shouldRollup: boolean }): ChildrenState {
+  getChildrenState(): ChildrenState {
     return this.children.reduce(
       (acc: ChildrenState, curr: CompositeNode) => {
-        const currSubtreeState = curr.getChildrenState({ shouldRollup });
-        const rollupValue = this.getSelectionStatusConsideringRollup(currSubtreeState, curr);
-        switch (rollupValue) {
+        const childrenState = curr.getChildrenState();
+        switch (curr.getIsSelected()) {
           case -1:
             acc.notSelected = [curr.id, ...acc.notSelected];
           case 1:
             acc.selected = [curr.id, ...acc.selected];
           default:
-            acc.selected = [...currSubtreeState.selected, ...acc.selected];
-            acc.notSelected = [...currSubtreeState.notSelected, ...acc.notSelected];
-            acc.undetermined = [curr.id, ...currSubtreeState.undetermined, ...acc.undetermined];
+            acc.selected = [...childrenState.selected, ...acc.selected];
+            acc.notSelected = [...childrenState.notSelected, ...acc.notSelected];
+            acc.undetermined = [curr.id, ...childrenState.undetermined, ...acc.undetermined];
         }
         return acc;
       },
@@ -209,24 +209,20 @@ export class CompositeNode {
     root: CompositeNode;
     subtreeState: ChildrenState;
   } {
-    const childStates = this.getChildrenState({ shouldRollup });
-    console.log({ recalcState: childStates });
-    const newSelectionValueWithRollup = this.getSelectionStatusConsideringRollup(childStates, this);
+    const { isSelected, childrenState } = this.deriveIsSelectedFromChildrenStates();
     console.log({
       id: this.id,
-      recalcNewSelectionValueWithRollup: newSelectionValueWithRollup,
+      recalcNewSelectionValueWithRollup: isSelected,
     });
     const oldSelectionStatus = this.isSelected;
-    this.isSelected = newSelectionValueWithRollup;
-    if (this.#parent && oldSelectionStatus !== newSelectionValueWithRollup) {
-      console.log(
-        `${this.#parent.getId()} exists and old (${oldSelectionStatus}) !== new (${newSelectionValueWithRollup})`
-      );
+    this.isSelected = isSelected;
+    if (this.#parent && oldSelectionStatus !== isSelected) {
+      console.log(`${this.#parent.getId()} exists and old (${oldSelectionStatus}) !== new (${isSelected})`);
       return this.#parent.recalculateSubtreeSelection({ shouldRollup: true });
     }
     console.log(`No more parents (or status is the same)`);
-    console.log(`returning from recalc: ${this.getId()}, ${JSON.stringify(childStates)}`);
-    return { root: this.getRoot(), subtreeState: childStates };
+    console.log(`returning from recalc: ${this.getId()}, ${JSON.stringify(childrenState)}`);
+    return { root: this.getRoot(), subtreeState: childrenState };
   }
 
   /**
