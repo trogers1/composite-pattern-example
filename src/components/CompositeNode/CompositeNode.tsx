@@ -12,7 +12,11 @@ export type CompositeNodeConstructorArgs = {
   name: string;
   parent: CompositeNode | null;
   children?: CompositeNode[];
-  onChange?: (args: { root: CompositeNode; subtreeState: ChildrenState }) => void;
+  onChange?: (args: RecalculateIsSelectedReturnType) => void;
+};
+export type RecalculateIsSelectedReturnType = {
+  root: CompositeNode;
+  state: ChildrenState;
 };
 export type RecalculateIsSelectedArgs = { shouldRollup: boolean };
 export type SetIsSelectedForSelfAndChildrenArgs = {
@@ -115,24 +119,12 @@ export class CompositeNode {
     );
     if (shouldParentRecalculate && this.#parent) {
       // This node has a parent, so we must tell it to recalculate it's own state after setting children
-      return this.#parent.recalculateIsSelected({ shouldRollup: true });
-    }
-    // This node has NO parent, so we know the subtree state is whatever `newSelectedStatus` is, and this is the root
-    let subtreeState: ChildrenState;
-    switch (this.isSelected) {
-      case -1:
-        subtreeState = { selected: [], notSelected: [this.id], undetermined: [] };
-        break;
-      case 1:
-        subtreeState = { selected: [this.id], notSelected: [], undetermined: [] };
-        break;
-      case 0:
-      default:
-        subtreeState = { selected: [], notSelected: [], undetermined: [this.id] };
-        break;
+      return this.#parent.recalculateIsSelected();
     }
 
-    return { root: this, subtreeState };
+    const root = this.getRoot();
+
+    return { root, state: root.getChildrenState() };
   }
 
   deriveIsSelectedFromChildrenStates(): { isSelected: SelectionValue; childrenState: ChildrenState } {
@@ -205,29 +197,19 @@ export class CompositeNode {
 
   /**
    * Recalculate and set isSelected based on the state of CompositeNode's children
-   * then return the resultant CheckedIdsRollup for the subtree with
-   * the current node as the root.
+   * recursively up the tree (if isSelected changes). Returns the root node of the
+   * subtree that had a recalculation, along with the state of all children of that
+   * root node.
    *
-   * @param shouldRollup indicates whether or not all subtree statuses are taken into account to 'rollup' to their parent, or if all are simply returned
    */
-  recalculateIsSelected({ shouldRollup }: RecalculateIsSelectedArgs): {
-    root: CompositeNode;
-    subtreeState: ChildrenState;
-  } {
+  recalculateIsSelected(): RecalculateIsSelectedReturnType {
     const { isSelected, childrenState } = this.deriveIsSelectedFromChildrenStates();
-    console.log({
-      id: this.id,
-      recalcNewSelectionValueWithRollup: isSelected,
-    });
     const oldSelectionStatus = this.isSelected;
     this.isSelected = isSelected;
     if (this.#parent && oldSelectionStatus !== isSelected) {
-      console.log(`${this.#parent.getId()} exists and old (${oldSelectionStatus}) !== new (${isSelected})`);
-      return this.#parent.recalculateIsSelected({ shouldRollup: true });
+      return this.#parent.recalculateIsSelected();
     }
-    console.log(`No more parents (or status is the same)`);
-    console.log(`returning from recalc: ${this.getId()}, ${JSON.stringify(childrenState)}`);
-    return { root: this.getRoot(), subtreeState: childrenState };
+    return { root: this.getRoot(), state: childrenState };
   }
 
   /**
