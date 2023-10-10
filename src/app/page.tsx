@@ -70,11 +70,11 @@ export default function Home() {
       <div className="z-10 w-full max-w-5xl items-start justify-between font-mono text-sm lg:flex"></div>
       {state
         ? state.map((node) => {
-            const { subtreeState } = node.recalculateIsSelected({ shouldRollup: true });
-            console.log({ nodeId: node.id, subtreeState });
+            const { state } = node.recalculateIsSelected();
+            console.log({ nodeId: node.id, state });
             return (
               <>
-                <div>Rollup: {subtreeState.selected.join(', ')} </div>
+                <div>Rollup: {state.selected.join(', ')} </div>
                 <div className="p-4" key={node.getId()}>
                   {node.render()}
                 </div>
