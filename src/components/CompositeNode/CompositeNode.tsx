@@ -14,7 +14,7 @@ export type CompositeNodeConstructorArgs = {
   children?: CompositeNode[];
   onChange?: (args: { root: CompositeNode; subtreeState: ChildrenState }) => void;
 };
-export type RecalculateSubtreeSelectionArgs = { shouldRollup: boolean };
+export type RecalculateIsSelectedArgs = { shouldRollup: boolean };
 export type SetIsSelectedForSelfAndChildrenArgs = {
   newSelectedStatus: SelectionValue;
   shouldParentRecalculate?: boolean;
@@ -108,14 +108,14 @@ export class CompositeNode {
   setIsSelectedForSelfAndChildren({
     newSelectedStatus,
     shouldParentRecalculate = true,
-  }: SetIsSelectedForSelfAndChildrenArgs): ReturnType<typeof this.recalculateSubtreeSelection> {
+  }: SetIsSelectedForSelfAndChildrenArgs): ReturnType<typeof this.recalculateIsSelected> {
     this.isSelected = newSelectedStatus;
     this.children.forEach((child) =>
       child.setIsSelectedForSelfAndChildren({ newSelectedStatus, shouldParentRecalculate: false })
     );
     if (shouldParentRecalculate && this.#parent) {
       // This node has a parent, so we must tell it to recalculate it's own state after setting children
-      return this.#parent.recalculateSubtreeSelection({ shouldRollup: true });
+      return this.#parent.recalculateIsSelected({ shouldRollup: true });
     }
     // This node has NO parent, so we know the subtree state is whatever `newSelectedStatus` is, and this is the root
     let subtreeState: ChildrenState;
@@ -210,7 +210,7 @@ export class CompositeNode {
    *
    * @param shouldRollup indicates whether or not all subtree statuses are taken into account to 'rollup' to their parent, or if all are simply returned
    */
-  recalculateSubtreeSelection({ shouldRollup }: RecalculateSubtreeSelectionArgs): {
+  recalculateIsSelected({ shouldRollup }: RecalculateIsSelectedArgs): {
     root: CompositeNode;
     subtreeState: ChildrenState;
   } {
@@ -223,7 +223,7 @@ export class CompositeNode {
     this.isSelected = isSelected;
     if (this.#parent && oldSelectionStatus !== isSelected) {
       console.log(`${this.#parent.getId()} exists and old (${oldSelectionStatus}) !== new (${isSelected})`);
-      return this.#parent.recalculateSubtreeSelection({ shouldRollup: true });
+      return this.#parent.recalculateIsSelected({ shouldRollup: true });
     }
     console.log(`No more parents (or status is the same)`);
     console.log(`returning from recalc: ${this.getId()}, ${JSON.stringify(childrenState)}`);

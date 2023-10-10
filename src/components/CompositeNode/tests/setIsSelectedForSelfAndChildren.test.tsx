@@ -1,4 +1,4 @@
-import { CompositeNode, RecalculateSubtreeSelectionArgs } from '../CompositeNode';
+import { CompositeNode, RecalculateIsSelectedArgs } from '../CompositeNode';
 describe('CompositeNode', () => {
   describe('setIsSelectedForSelfAndChildren', () => {
     describe('root node: ', () => {
@@ -395,10 +395,10 @@ describe('CompositeNode', () => {
       });
     });
     describe('NOT root node', () => {
-      it('should call recalculateSubtreeSelection on a parent node if it exists if shouldParentRecalculate is set', () => {
+      it('should call recalculateIsSelected on a parent node if it exists if shouldParentRecalculate is set', () => {
         let recalcStateWasRequested = false;
         const parent = new CompositeNode({ id: '1', name: 'test1', parent: null });
-        parent.recalculateSubtreeSelection = ({ shouldRollup }: RecalculateSubtreeSelectionArgs) => {
+        parent.recalculateIsSelected = ({ shouldRollup }: RecalculateIsSelectedArgs) => {
           recalcStateWasRequested = true; // Here we're using the fact that ob
           return { root: parent, subtreeState: { selected: [], notSelected: [], undetermined: [] } };
         };

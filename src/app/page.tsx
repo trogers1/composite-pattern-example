@@ -70,7 +70,7 @@ export default function Home() {
       <div className="z-10 w-full max-w-5xl items-start justify-between font-mono text-sm lg:flex"></div>
       {state
         ? state.map((node) => {
-            const { subtreeState } = node.recalculateSubtreeSelection({ shouldRollup: true });
+            const { subtreeState } = node.recalculateIsSelected({ shouldRollup: true });
             console.log({ nodeId: node.id, subtreeState });
             return (
               <>
